@@ -1,0 +1,13 @@
+{
+  "name": "cauldron",
+  "private": true,
+  "description": "Kernel for Covenstead — the desktop where you can see your familiars work.",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test 'packages/*/test/*.test.ts'",
+    "typecheck": "tsc -p packages/kernel --noEmit"
+  }
+}

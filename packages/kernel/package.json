@@ -1,0 +1,9 @@
+{
+  "name": "@opencoven/cauldron",
+  "version": "0.0.0",
+  "description": "Actor-aware desktop kernel: window manager, provenance VFS, consent, command bus.",
+  "license": "MIT",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "engines": { "node": ">=24" }
+}
