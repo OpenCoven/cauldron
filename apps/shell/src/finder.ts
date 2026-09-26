@@ -1,5 +1,6 @@
 import { KernelError, USER, type KernelEvent, type Stat } from "@opencoven/cauldron";
 import { dialog, esc } from "./dialogs.ts";
+import { makeDraggable, makeDropTarget } from "./dnd.ts";
 import type { Shell } from "./shell.ts";
 import type { AppView, Menu } from "./types.ts";
 
@@ -231,6 +232,7 @@ export class FinderView implements AppView {
 
     const scroll = document.createElement("div");
     scroll.className = "scroll";
+    makeDropTarget(this.#shell, scroll, () => this.path);
     const table = document.createElement("table");
     table.className = "list";
     const head = document.createElement("tr");
@@ -285,6 +287,8 @@ export class FinderView implements AppView {
         this.render();
       };
       tr.ondblclick = () => this.open(n.name);
+      if (this.#renaming !== n.name) makeDraggable(tr, () => s.path);
+      if (n.kind === "folder") makeDropTarget(this.#shell, tr, () => s.path, { stop: true });
       tbody.append(tr);
     }
     table.append(thead, tbody);
