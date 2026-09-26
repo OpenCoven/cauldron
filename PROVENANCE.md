@@ -27,7 +27,7 @@ on anyone's claimed innocence.
 | Date | Reviewer | Artifact | Findings | Resolution |
 |---|---|---|---|---|
 | 2026-09-25 | Sage, Nova (familiar persona reviews) | Spec v0.1 | Agent-readiness gaps; one-person clean room risk | Spec v0.2; this file |
-| — | **Val (human second read) — REQUIRED before publication** | Spec v0.2 | pending | pending |
+| 2026-09-25 | Val Alexander (human second read) | Spec v0.2 | Read in full; no leaked expression reported | Approved publication |
 
 ## Similarity checks
 | Release | Tool | Target revision | Operator (excluded person) | Report path | Result |
@@ -42,8 +42,8 @@ on anyone's claimed innocence.
 | 2026-09-25 | Provenance + consent in P0 | Val (delegated to Cody) |
 | 2026-09-25 | "Cauldron" = kernel codename; "Covenstead" = proposed surface name (Charm). Release name only after a USPTO/EUIPO search — "Cauldron" is crowded (AMD GPUOpen, Deque's React library, a 2024 US filing) | Val (delegated to Cody) |
 | 2026-09-25 | Theme "Slate", original glyphs, left-hand title-bar controls; no Apple/Microsoft product names for themes | Val (delegated to Cody) |
+| 2026-09-25 | Repository made public; ruleset `main` (signed commits, required `unit + e2e`, no force-push/deletion) applied | Val |
 
 ## Open items
 - Future README reads: pin a commit URL (`/blob/<sha>/README.md`) so the revision is exact. HEAD SHA above was read via `gh api …/commits/HEAD` (metadata only, no file contents).
-- Human second read of spec v0.2.
 - Pick and log a UI typeface (OFL) before any theme work.
