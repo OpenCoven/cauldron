@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { USER, agent } from "../src/index.ts";
+import { DEFAULT_METRICS, USER, agent } from "../src/index.ts";
 import { FINDER, TEXTEDIT, setup } from "./helpers.ts";
 
 const u = { actor: USER };
@@ -154,5 +154,42 @@ test("WM-09c an agent window opened behind is never fully covered by the focused
   const [m, t] = [mine.rect, theirs.rect];
   const covered = t.x >= m.x && t.y >= m.y && t.x + t.w <= m.x + m.w && t.y + t.h <= m.y + m.h;
   assert.equal(covered, false);
-  assert.equal(t.x + t.w - (m.x + m.w), 40);
+  assert.equal(t.x + t.w - (m.x + m.w), DEFAULT_METRICS.agentPeek);
+  assert.equal(theirs.peek, "right");
+});
+
+test("WM-09d an agent window peeks left when the right edge has no room, and above when neither side does", () => {
+  const finder = (k: ReturnType<typeof setup>["k"], w: number, x: number) => {
+    const f = k.wm.open(u, { instanceId: "f", appId: "finder", title: "Documents", defaultSize: FINDER.defaultWindow, minSize: FINDER.minWindow });
+    k.wm.resize(u, f.id, w, f.rect.h);
+    k.wm.move(u, f.id, x, f.rect.y);
+    return k.wm.get(f.id).rect;
+  };
+  const a = setup({ viewport: { w: 1024, h: 768 } });
+  const m = finder(a.k, 800, 200);
+  const left = openTE(a.k, sage);
+  assert.equal(left.peek, "left");
+  assert.equal(m.x - left.rect.x, DEFAULT_METRICS.agentPeek);
+
+  const b = setup({ viewport: { w: 1024, h: 768 } });
+  const full = finder(b.k, 1024, 0);
+  const top = openTE(b.k, sage);
+  assert.equal(top.peek, "top");
+  assert.equal(full.y - top.rect.y, DEFAULT_METRICS.titleBarHeight + DEFAULT_METRICS.minVisibleTitle);
+});
+
+test("WM-09e the peek edge is forgotten once the window is moved, resized or zoomed", () => {
+  const { k } = setup();
+  k.wm.open(u, { instanceId: "f", appId: "finder", title: "Documents", defaultSize: FINDER.defaultWindow, minSize: FINDER.minWindow });
+  for (const act of [
+    (id: string) => k.wm.move(u, id, 30, 60),
+    (id: string) => k.wm.resize(u, id, 400, 300),
+    (id: string) => k.wm.zoom(u, id),
+  ]) {
+    const w = openTE(k, sage);
+    assert.ok(w.peek);
+    act(w.id);
+    assert.equal(k.wm.get(w.id).peek, undefined);
+    k.wm.close(u, w.id);
+  }
 });

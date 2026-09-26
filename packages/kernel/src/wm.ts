@@ -26,6 +26,8 @@ export interface WindowRecord {
   status?: WindowStatus;
   /** Set when an agent opened the window behind the user's focus; cleared on focus. */
   badge: boolean;
+  /** Which edge of an agent window was left showing beside the focused window; cleared once the window is moved, resized or zoomed. */
+  peek?: "right" | "left" | "top";
   flags: { resizable: boolean; closable: boolean; minimizable: boolean };
   minSize: Size;
   documentPath?: string;
@@ -48,6 +50,8 @@ export interface WmMetrics {
   titleBarHeight: number;
   cascade: number;
   minVisibleTitle: number;
+  /** Width left showing when an agent window opens behind the focused one: room for the familiar's name label. */
+  agentPeek: number;
   smallViewport: number;
 }
 
@@ -56,6 +60,7 @@ export const DEFAULT_METRICS: WmMetrics = {
   titleBarHeight: 20,
   cascade: 24,
   minVisibleTitle: 40,
+  agentPeek: 120,
   smallViewport: 640,
 };
 
@@ -134,7 +139,8 @@ export class WindowManager {
     const behind = ctx.actor.kind === "agent" && focused && focused.state === "normal";
     if (behind) {
       // Never hidden: an agent window must peek out from behind the focused one.
-      win.rect = this.#peek(win.rect, focused.rect);
+      const peeked = this.#peek(win.rect, focused.rect);
+      if (peeked) [win.rect, win.peek] = [peeked.rect, peeked.side];
       // Never steal focus: slot in directly beneath the focused window and badge it.
       this.#stack.splice(this.#stack.indexOf(focused.id), 0, id);
       win.badge = true;
@@ -169,6 +175,7 @@ export class WindowManager {
     win.rect.x = clamp(x, m.minVisibleTitle - win.rect.w, area.x + area.w - m.minVisibleTitle);
     win.rect.y = clamp(y, area.y, area.y + area.h - m.titleBarHeight);
     delete win.userRect;
+    delete win.peek;
     this.#emit(ctx, "window:moved", id, { rect: win.rect });
     return structuredClone(win.rect);
   }
@@ -179,12 +186,14 @@ export class WindowManager {
     win.rect.w = Math.max(w, win.minSize.w);
     win.rect.h = Math.max(h, win.minSize.h);
     delete win.userRect;
+    delete win.peek;
     this.#emit(ctx, "window:resized", id, { rect: win.rect });
     return structuredClone(win.rect);
   }
 
   zoom(ctx: Ctx, id: string): Rect {
     const win = this.#must(id);
+    delete win.peek;
     if (win.userRect) {
       win.rect = win.userRect;
       delete win.userRect;
@@ -263,17 +272,21 @@ export class WindowManager {
     return fits ? next : centered;
   }
 
-  /** Shift `r` so at least `minVisibleTitle` px of it shows beside `over`, preferring the right. */
-  #peek(r: Rect, over: Rect): Rect {
+  /**
+   * Shift `r` so `agentPeek` px of it show beside `over` (right preferred, then left),
+   * or its title bar plus `minVisibleTitle` px show above. Returns null when `r` is not covered.
+   */
+  #peek(r: Rect, over: Rect): { rect: Rect; side: "right" | "left" | "top" } | null {
     const covered = r.x >= over.x && r.y >= over.y && r.x + r.w <= over.x + over.w && r.y + r.h <= over.y + over.h;
-    if (!covered || this.isSmall) return r;
+    if (!covered || this.isSmall) return null;
     const area = this.desktopArea;
-    const peek = this.#m.minVisibleTitle;
+    const peek = Math.min(this.#m.agentPeek, r.w);
     const right = over.x + over.w + peek - r.w;
-    if (right + r.w <= area.x + area.w) return { ...r, x: right };
+    if (right + r.w <= area.x + area.w) return { rect: { ...r, x: right }, side: "right" };
     const left = over.x - peek;
-    if (left >= area.x) return { ...r, x: left };
-    return { ...r, y: Math.max(area.y, over.y - this.#m.titleBarHeight - peek) };
+    if (left >= area.x) return { rect: { ...r, x: left }, side: "left" };
+    const top = Math.max(area.y, over.y - this.#m.titleBarHeight - this.#m.minVisibleTitle);
+    return { rect: { ...r, y: top }, side: "top" };
   }
 
   #refocus(): void {
