@@ -42,7 +42,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .owner { font-size: 11px; color: var(--paper); background: var(--agent); padding: 0 6px; border-radius: 2px; }
 .badge { width: 8px; height: 8px; border-radius: 50%; background: var(--agent); }
 .content { flex: 1; min-height: 0; overflow: auto; position: relative; }
-.resize { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--line) 50% 58%, transparent 58% 70%, var(--line) 70% 78%, transparent 78%); touch-action: none; }
+.resize { position: absolute; z-index: 5; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--line) 50% 58%, transparent 58% 70%, var(--line) 70% 78%, transparent 78%); touch-action: none; }
 
 .toolbar { display: flex; gap: 4px; padding: 4px; border-bottom: 1px solid var(--line); align-items: center; }
 .path { flex: 1; font-family: ui-monospace, monospace; font-size: 12px; padding: 1px 4px; border: 1px solid transparent; }

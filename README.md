@@ -48,7 +48,7 @@ localStorage. It is the acceptance surface for the spec's UI rows, not the produ
 surface (that is Covenstead inside Coven Cave).
 
 ```sh
-npm run dev       # http://127.0.0.1:5178 (live: https://cauldron-shell.vercel.app)
+npm run dev       # http://127.0.0.1:5188 (live: https://cauldron-shell.vercel.app)
 npm run test:e2e  # Playwright, Chromium; tests are named by spec row
 ```
 

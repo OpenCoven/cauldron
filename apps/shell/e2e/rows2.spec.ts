@@ -176,3 +176,10 @@ test("TXT-06b every match is highlighted; the current one is marked", async ({ p
   await te.getByRole("textbox", { name: "Find" }).press("Escape");
   await expect(te.locator(".hl mark")).toHaveCount(0);
 });
+
+test("WM-04b the resize grip stays on top of window content (TextEdit)", async ({ page }) => {
+  await menu(page, "✦", "New TextEdit Document");
+  const g = (await win(page, "textedit").first().locator(".resize").boundingBox())!;
+  const hit = await page.evaluate(([x, y]) => (document.elementFromPoint(x!, y!) as HTMLElement).className, [g.x + 8, g.y + 8]);
+  expect(hit).toBe("resize");
+});
