@@ -10,6 +10,7 @@ import {
   type WmSnapshot,
 } from "@opencoven/cauldron";
 import { dialog, esc } from "./dialogs.ts";
+import { DesktopIcons } from "./desktop-icons.ts";
 import { FinderView, cap } from "./finder.ts";
 import { DESKTOP_KEY, LocalStorageAdapter } from "./storage.ts";
 import { TextEditView } from "./textedit.ts";
@@ -58,6 +59,7 @@ export class Shell {
   #untitled = 0;
   #openMenu: string | null = null;
   #restoring = false;
+  icons!: DesktopIcons;
 
   readonly desktop: HTMLElement;
   readonly menubar: HTMLElement;
@@ -72,6 +74,8 @@ export class Shell {
     });
     this.kernel.apps.register(FINDER);
     this.kernel.apps.register(TEXTEDIT);
+    this.icons = new DesktopIcons(this);
+    this.desktop.append(this.icons.el);
     this.kernel.bus.subscribe((e) => this.#onEvent(e));
     addEventListener("resize", () => {
       this.kernel.wm.setViewport({ w: innerWidth, h: innerHeight });
@@ -93,6 +97,7 @@ export class Shell {
     }
     this.#restoring = false;
     if (this.kernel.wm.list().length === 0) this.launch("finder", { path: "/Documents" });
+    this.icons.render();
     this.render();
     this.persist();
   }
@@ -170,7 +175,10 @@ export class Shell {
       const w = this.kernel.wm.get(e.windowId as string);
       if (!this.#views.has(w.id)) this.#createView(w, this.#pending ?? {});
     }
-    if (e.type === "vfs:changed") for (const v of this.#views.values()) v.onVfs(e);
+    if (e.type === "vfs:changed") {
+      for (const v of this.#views.values()) v.onVfs(e);
+      this.icons.render();
+    }
     if (e.type.startsWith("window:")) {
       this.render();
       if (!this.#restoring) this.persist();
@@ -266,6 +274,9 @@ export class Shell {
   #drag(handle: HTMLElement, id: string, apply: (dx: number, dy: number, start: { x: number; y: number; w: number; h: number }) => void) {
     handle.addEventListener("pointerdown", (e) => {
       if ((e.target as HTMLElement).closest("button")) return;
+      // Stop native drag/selection: once the window moves, the browser would otherwise
+      // hit-test the original press point and start dragging whatever is now beneath it.
+      e.preventDefault();
       const start = { ...this.kernel.wm.get(id).rect };
       const ox = e.clientX;
       const oy = e.clientY;

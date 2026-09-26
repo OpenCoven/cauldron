@@ -17,7 +17,14 @@ export class TextEditView implements AppView {
   #untitled: string;
   #text: HTMLTextAreaElement;
   #banner: HTMLDivElement;
+  #hl: HTMLDivElement;
   #shell: Shell;
+  /** Own history (spec §7.4: ≥100 steps). Native undo breaks on programmatic value changes. */
+  #past: string[] = [];
+  #future: string[] = [];
+  #last = "";
+  #find: { bar: HTMLDivElement; input: HTMLInputElement; count: HTMLSpanElement; idx: number; hits: number[] } | null = null;
+  static readonly HISTORY = 500;
 
   readonly windowId: string;
 
@@ -32,15 +39,31 @@ export class TextEditView implements AppView {
     this.#text.spellcheck = false;
     this.#text.setAttribute("aria-label", "Document");
     this.#text.oninput = () => {
-      localStorage.setItem(draftKey(this.windowId), this.#text.value);
-      this.#retitle();
+      this.#past.push(this.#last);
+      if (this.#past.length > TextEditView.HISTORY) this.#past.shift();
+      this.#future = [];
+      this.#last = this.#text.value;
+      this.#changed();
     };
-    this.el.append(this.#banner, this.#text);
+    // Highlight layer behind a transparent textarea: find matches stay visible while
+    // focus is in the find field (a textarea hides its selection when unfocused).
+    const editor = document.createElement("div");
+    editor.className = "editor";
+    this.#hl = document.createElement("div");
+    this.#hl.className = "hl";
+    this.#hl.setAttribute("aria-hidden", "true");
+    this.#text.addEventListener("scroll", () => {
+      this.#hl.scrollTop = this.#text.scrollTop;
+      this.#hl.scrollLeft = this.#text.scrollLeft;
+    });
+    editor.append(this.#hl, this.#text);
+    this.el.append(this.#banner, editor);
     this.#untitled = state.untitled ?? shell.nextUntitled();
     this.path = null;
     if (state.path && shell.kernel.vfs.exists(u, state.path)) this.#load(state.path);
     const draft = localStorage.getItem(draftKey(windowId));
     if (draft !== null && draft !== this.#saved) this.#text.value = draft;
+    this.#last = this.#text.value;
     this.#retitle();
   }
 
@@ -66,16 +89,137 @@ export class TextEditView implements AppView {
           { label: "Save As…", shortcut: "⇧⌘S", action: () => void this.saveAs() },
         ],
       },
+      {
+        title: "Edit",
+        items: [
+          { label: "Undo", shortcut: "⌘Z", disabled: this.#past.length === 0, action: () => this.undo() },
+          { label: "Redo", shortcut: "⇧⌘Z", disabled: this.#future.length === 0, action: () => this.redo() },
+          { label: "Find…", shortcut: "⌘F", action: () => this.openFind() },
+        ],
+      },
     ];
   }
 
   onKey(e: KeyboardEvent): boolean {
     const mod = e.metaKey || e.ctrlKey;
-    if (mod && e.key.toLowerCase() === "s") {
+    const k = e.key.toLowerCase();
+    if (mod && k === "s") {
       void (e.shiftKey ? this.saveAs() : this.save());
       return true;
     }
+    if (mod && k === "z") return e.shiftKey ? this.redo() : this.undo(), true;
+    if (mod && k === "y") return this.redo(), true;
+    if (mod && k === "f") return this.openFind(), true;
     return false;
+  }
+
+  undo() {
+    const prev = this.#past.pop();
+    if (prev === undefined) return;
+    this.#future.push(this.#text.value);
+    this.#apply(prev);
+  }
+
+  redo() {
+    const next = this.#future.pop();
+    if (next === undefined) return;
+    this.#past.push(this.#text.value);
+    this.#apply(next);
+  }
+
+  #apply(value: string) {
+    this.#text.value = value;
+    this.#last = value;
+    this.#changed();
+  }
+
+  #changed() {
+    localStorage.setItem(draftKey(this.windowId), this.#text.value);
+    this.#retitle();
+    if (this.#find) this.#search(false);
+  }
+
+  // ---------- find (spec §7.4) ----------
+
+  openFind() {
+    if (!this.#find) {
+      const bar = document.createElement("div");
+      bar.className = "findbar";
+      const input = document.createElement("input");
+      input.setAttribute("aria-label", "Find");
+      input.placeholder = "Find";
+      const count = document.createElement("span");
+      count.className = "count";
+      const btn = (label: string, title: string, fn: () => void) => {
+        const b = document.createElement("button");
+        b.textContent = label;
+        b.setAttribute("aria-label", title);
+        b.onclick = fn;
+        return b;
+      };
+      bar.append(input, count, btn("‹", "Previous match", () => this.#step(-1)), btn("›", "Next match", () => this.#step(1)), btn("Done", "Close find", () => this.closeFind()));
+      input.oninput = () => this.#search(true);
+      input.onkeydown = (e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") { e.preventDefault(); this.#step(e.shiftKey ? -1 : 1); }
+        if (e.key === "Escape") { e.preventDefault(); this.closeFind(); }
+      };
+      this.#find = { bar, input, count, idx: -1, hits: [] };
+      this.#banner.after(bar);
+    }
+    this.#find.input.focus();
+    this.#find.input.select();
+  }
+
+  closeFind() {
+    this.#find?.bar.remove();
+    this.#find = null;
+    this.#hl.replaceChildren();
+    this.#text.focus();
+  }
+
+  #search(jump: boolean) {
+    const f = this.#find!;
+    const q = f.input.value.toLowerCase();
+    const hay = this.#text.value.toLowerCase();
+    f.hits = [];
+    if (q) for (let i = hay.indexOf(q); i !== -1; i = hay.indexOf(q, i + Math.max(1, q.length))) f.hits.push(i);
+    if (f.hits.length === 0) f.idx = -1;
+    else if (jump || f.idx < 0 || f.idx >= f.hits.length) f.idx = 0;
+    this.#showHit();
+  }
+
+  #step(dir: 1 | -1) {
+    const f = this.#find;
+    if (!f || f.hits.length === 0) return;
+    f.idx = (f.idx + dir + f.hits.length) % f.hits.length;
+    this.#showHit();
+  }
+
+  #showHit() {
+    const f = this.#find!;
+    f.count.textContent = !f.input.value ? "" : f.hits.length === 0 ? "No matches" : `${f.idx + 1} of ${f.hits.length}`;
+    const len = f.input.value.length;
+    if (f.idx >= 0) {
+      const start = f.hits[f.idx]!;
+      this.#text.setSelectionRange(start, start + len);
+    }
+    // Paint every match; the current one is marked "current".
+    const text = this.#text.value;
+    const frag = document.createDocumentFragment();
+    let at = 0;
+    f.hits.forEach((h, i) => {
+      frag.append(text.slice(at, h));
+      const m = document.createElement("mark");
+      if (i === f.idx) m.className = "current";
+      m.textContent = text.slice(h, h + len);
+      frag.append(m);
+      at = h + len;
+    });
+    frag.append(text.slice(at) + "\n");
+    this.#hl.replaceChildren(frag);
+    this.#hl.scrollTop = this.#text.scrollTop;
+    this.el.querySelector("mark.current")?.scrollIntoView({ block: "nearest" });
   }
 
   focusText() {
@@ -90,6 +234,9 @@ export class TextEditView implements AppView {
     this.#loadedRev = r.rev;
     this.#saved = r.content;
     this.#text.value = r.content;
+    this.#last = r.content;
+    this.#past = [];
+    this.#future = [];
     this.#shell.setDocumentPath(this.windowId, st.path);
   }
 
@@ -183,7 +330,9 @@ export class TextEditView implements AppView {
       const candidates = dest === "/Trash" ? [] : [dest, dest && `${dest}/${this.name}`].filter(Boolean) as string[];
       const found = candidates.find((p) => vfs.exists(u, p) && vfs.stat(u, p).node.id === this.#nodeId);
       if (found) {
-        this.path = vfs.stat(u, found).path;
+        const moved = vfs.stat(u, found);
+        this.path = moved.path;
+        this.#loadedRev = moved.node.rev; // rename/move bumps rev but not content
         this.#shell.setDocumentPath(this.windowId, this.path);
         this.#retitle();
         this.#shell.persist();
@@ -201,6 +350,16 @@ export class TextEditView implements AppView {
     if (!vfs.exists(u, this.path)) return;
     const st = vfs.stat(u, this.path);
     if (st.node.id !== this.#nodeId || st.node.rev <= this.#loadedRev) return;
+    if ((st.node.content ?? "") === this.#saved) {
+      // Metadata-only change (e.g. case-only rename): adopt the new rev and path quietly.
+      this.#loadedRev = st.node.rev;
+      if (st.path !== this.path) {
+        this.path = st.path;
+        this.#shell.setDocumentPath(this.windowId, st.path);
+        this.#retitle();
+      }
+      return;
+    }
     if (e.actor.kind === "user" && !this.dirty) {
       this.reload();
       return;

@@ -30,3 +30,22 @@ test("capture: shared desktop with a familiar at work", async ({ page }) => {
   await page.locator('.dialog[data-kind="consent"] button', { hasText: "Not now" }).click();
   await pending;
 });
+
+test("capture: desktop icons, full Trash, and TextEdit find", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const { vfs } = window.cauldron.shell.kernel;
+    const u = { actor: { kind: "user" as const, id: "user" } };
+    await vfs.create(u, "/Desktop/Ideas", "folder");
+    await vfs.create(u, "/Desktop/todo.txt", "file", { content: "foo bar foo baz FOO" });
+    await vfs.create(u, "/Desktop/old.txt", "file");
+    await vfs.trash(u, "/Desktop/old.txt");
+  });
+  await page.locator('.desk-icon[data-name="todo.txt"]').dblclick();
+  const te = page.locator('section.win[data-app="textedit"]').first();
+  await expect(te.locator("textarea")).toHaveValue(/foo/);
+  await page.keyboard.press("ControlOrMeta+f");
+  await te.getByRole("textbox", { name: "Find" }).fill("foo");
+  await te.getByRole("textbox", { name: "Find" }).press("Enter");
+  await page.screenshot({ path: `${dir}/05-desktop-icons-find.png` });
+});
