@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: unit + e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Kernel tests (spec rows VFS-*, WM-*, CMD-*)
+        run: npm test
+      - name: Typecheck (kernel + shell)
+        run: npm run typecheck
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/shell
+      - name: Shell e2e (spec rows WM-*, FND-*, TXT-*, VFS-07)
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: apps/shell/test-results
+          retention-days: 7

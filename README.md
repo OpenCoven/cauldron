@@ -36,13 +36,34 @@ await k.commands.execute({
 });
 ```
 
+## Dev shell
+
+`apps/shell` (`@opencoven/cauldron-shell`) is a plain-DOM desktop on top of the kernel —
+menu bar, windows, Finder (list view), TextEdit, consent dialogs — persisted to
+localStorage. It is the acceptance surface for the spec's UI rows, not the product
+surface (that is Covenstead inside Coven Cave).
+
+```sh
+npm run dev       # http://127.0.0.1:5178
+npm run test:e2e  # Playwright, Chromium; tests are named by spec row
+```
+
+In the dev console, act as a familiar through the same command bus Cave will use:
+
+```js
+await cauldron.as("sage").exec("vfs.create", { path: "/Shared/notes.md", kind: "file", content: "hi" })
+await cauldron.as("sage").exec("wm.open", { appId: "textedit", instanceId: "s1", documentPath: "/Shared/notes.md" })
+```
+
 ## Develop
 
 Requires Node ≥ 24 (runs TypeScript directly; no build step).
 
 ```sh
-npm test          # node --test, acceptance rows are named by spec ID (VFS-07, WM-09, CMD-01 …)
-npm run typecheck # needs a local typescript + @types/node
+npm install
+npm test          # kernel: node --test, rows named by spec ID (VFS-07, WM-09, CMD-01 …)
+npm run typecheck # kernel + shell
+npm run test:e2e  # shell: Playwright
 ```
 
 ## License

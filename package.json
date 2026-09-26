@@ -1,13 +1,24 @@
 {
   "name": "cauldron",
   "private": true,
-  "description": "Kernel for Covenstead — the desktop where you can see your familiars work.",
+  "description": "Kernel for Covenstead \u2014 the desktop where you can see your familiars work.",
   "license": "MIT",
   "type": "module",
-  "workspaces": ["packages/*"],
-  "engines": { "node": ">=24" },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "node --test 'packages/*/test/*.test.ts'",
-    "typecheck": "tsc -p packages/kernel --noEmit"
+    "typecheck": "tsc -p packages/kernel --noEmit && tsc -p apps/shell --noEmit",
+    "dev": "npm run dev -w @opencoven/cauldron-shell",
+    "test:e2e": "npm run test:e2e -w @opencoven/cauldron-shell"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "@types/node": "^24.0.0"
   }
 }

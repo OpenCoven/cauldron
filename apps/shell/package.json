@@ -1,0 +1,20 @@
+{
+  "name": "@opencoven/cauldron-shell",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dev shell for the Cauldron kernel: desktop, Finder, TextEdit. Acceptance surface for UI spec rows.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@opencoven/cauldron": "0.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "vite": "^8.0.0"
+  }
+}
