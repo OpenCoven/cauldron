@@ -6,6 +6,10 @@ A human and her familiars share one desktop. Every window and file says who made
 When a familiar wants to act outside its own folder, it asks first. The Finder is the
 audit trail.
 
+**Try it:** <https://cauldron-shell.vercel.app> — the dev shell, deployed from `main`.
+Everything lives in your browser's localStorage; ✦ → Reset Desktop… starts over.
+Open the console and act as a familiar: `await cauldron.as("sage").exec("wm.open", { appId: "textedit", instanceId: "s1" })`.
+
 > Status: P0 kernel, unreleased. "Cauldron" is a codename (see `PROVENANCE.md` → Decisions).
 > This is a clean-room project — read `PROVENANCE.md` and `CONTRIBUTING.md` before contributing.
 
@@ -44,7 +48,7 @@ localStorage. It is the acceptance surface for the spec's UI rows, not the produ
 surface (that is Covenstead inside Coven Cave).
 
 ```sh
-npm run dev       # http://127.0.0.1:5178
+npm run dev       # http://127.0.0.1:5178 (live: https://cauldron-shell.vercel.app)
 npm run test:e2e  # Playwright, Chromium; tests are named by spec row
 ```
 
