@@ -245,7 +245,11 @@ export class Shell {
       el.querySelector(".title")!.textContent = w.title;
       const owner = el.querySelector<HTMLElement>(".owner")!;
       owner.hidden = w.ownerActor.kind !== "agent";
-      owner.textContent = `${cap(w.ownerActor.id)}${w.status ? ` · ${w.status}` : ""}`;
+      owner.querySelector(".who")!.textContent = cap(w.ownerActor.id);
+      owner.querySelector(".what")!.textContent = w.status ? ` · ${w.status}` : "";
+      owner.title = `${cap(w.ownerActor.id)}${w.status ? ` · ${w.status}` : ""}`;
+      if (w.peek) el.dataset.peek = w.peek;
+      else delete el.dataset.peek;
       el.querySelector<HTMLElement>(".badge")!.hidden = !w.badge;
       el.querySelector<HTMLElement>(".resize")!.hidden = wm.isSmall || !w.flags.resizable;
     });
@@ -258,7 +262,7 @@ export class Shell {
     el.dataset.windowId = w.id;
     el.dataset.app = w.appId;
     el.setAttribute("aria-label", w.title);
-    el.innerHTML = `<div class="titlebar"><span class="controls"><button class="close" aria-label="Close"></button><button class="min" aria-label="Minimize"></button><button class="zoom" aria-label="Zoom"></button></span><span class="badge" title="Opened by a familiar" hidden></span><span class="title"></span><span class="owner" hidden></span></div><div class="content"></div><div class="resize" aria-hidden="true"></div>`;
+    el.innerHTML = `<div class="titlebar"><span class="controls"><button class="close" aria-label="Close"></button><button class="min" aria-label="Minimize"></button><button class="zoom" aria-label="Zoom"></button></span><span class="badge" title="Opened by a familiar" hidden></span><span class="title"></span><span class="owner" hidden><span class="who"></span><span class="what"></span></span></div><div class="content"></div><div class="resize" aria-hidden="true"></div>`;
     const wm = this.kernel.wm;
     el.addEventListener("pointerdown", () => {
       if (wm.focusedId !== w.id) wm.focus(u, w.id);

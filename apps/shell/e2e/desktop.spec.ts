@@ -111,6 +111,52 @@ test("WM-09 a familiar's window opens behind, badged, with owner and status; foc
   await expect(finder(page)).toHaveAttribute("data-focused", "true");
 });
 
+// Is every column of this element the top-most thing at its own pixels (not under another window)?
+const unobscured = (page: Page, sel: string) =>
+  page.locator(sel).evaluate((el) => {
+    const b = el.getBoundingClientRect();
+    const y = b.top + b.height / 2;
+    const xs = [b.left + 1, b.left + b.width / 2, b.right - 1];
+    return b.width > 0 && xs.every((x) => el.contains(document.elementFromPoint(x, y)) || document.elementFromPoint(x, y) === el);
+  });
+
+test("WM-09f a familiar's name stays fully readable on the edge of a window peeking from behind", async ({ page }) => {
+  // right peek: Finder has room on its right
+  await sage(page, "wm.open", { appId: "textedit", instanceId: "sage-r", title: "Sage's notes" });
+  const right = win(page, "textedit").first();
+  await expect(right).toHaveAttribute("data-peek", "right");
+  await expect(right.locator(".owner .who")).toHaveText("Sage");
+  expect(await unobscured(page, 'section.win[data-peek="right"] .owner .who')).toBe(true);
+  expect(await unobscured(page, 'section.win[data-peek="right"] .owner .what')).toBe(true);
+  await expect(finder(page)).toHaveAttribute("data-focused", "true");
+
+  // left peek: widen Finder to the right edge so only the left side is free
+  await page.evaluate(() => {
+    const { shell } = window.cauldron;
+    const u = { actor: { kind: "user", id: "user" } as const };
+    for (const w of shell.kernel.wm.list()) if (w.appId === "textedit") shell.kernel.wm.close(u, w.id);
+    const f = shell.kernel.wm.list().find((w) => w.appId === "finder")!;
+    shell.kernel.wm.resize(u, f.id, 1000, f.rect.h);
+    shell.kernel.wm.move(u, f.id, 1280 - 1000, f.rect.y);
+    shell.render();
+  });
+  await sage(page, "wm.open", { appId: "textedit", instanceId: "sage-l", title: "Sage's draft" });
+  const left = page.locator('section.win[data-peek="left"]');
+  await expect(left).toHaveCount(1);
+  expect(await unobscured(page, 'section.win[data-peek="left"] .owner .who')).toBe(true);
+
+  // a long status trims before the name does
+  const leftId = await left.getAttribute("data-window-id");
+  await page.evaluate((id) => {
+    const { shell } = window.cauldron;
+    shell.kernel.wm.setStatus({ actor: { kind: "agent", id: "sage" } }, id!, "waiting-approval");
+    shell.render();
+  }, leftId);
+  await expect(left.locator(".owner")).toHaveAttribute("title", "Sage · waiting-approval");
+  expect(await unobscured(page, 'section.win[data-peek="left"] .owner .who')).toBe(true);
+  expect(await unobscured(page, 'section.win[data-peek="left"] .owner')).toBe(true);
+});
+
 test("FND-01 double-click a folder to enter it; Back returns", async ({ page }) => {
   const f = finder(page);
   await f.getByRole("button", { name: "Enclosing Folder" }).click();

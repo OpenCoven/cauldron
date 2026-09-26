@@ -69,3 +69,23 @@ test("capture: Finder icon view with a marquee selection in progress", async ({ 
   await page.screenshot({ path: `${dir}/06-finder-icon-view-marquee.png` });
   await page.mouse.up();
 });
+
+test("capture: a familiar's window peeking out on the left, name on the visible edge", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const { shell } = window.cauldron;
+    const u = { actor: { kind: "user", id: "user" } as const };
+    const f = shell.kernel.wm.list().find((w) => w.appId === "finder")!;
+    shell.kernel.wm.resize(u, f.id, 1000, f.rect.h);
+    shell.kernel.wm.move(u, f.id, 1280 - 1000, f.rect.y);
+    shell.render();
+  });
+  await page.evaluate(() => window.cauldron.as("sage").exec("wm.open", { appId: "textedit", instanceId: "sage-l", title: "Sage's draft" }));
+  await page.evaluate(() => {
+    const { shell } = window.cauldron;
+    const w = shell.kernel.wm.list().find((x) => x.peek === "left")!;
+    shell.kernel.wm.setStatus({ actor: { kind: "agent", id: "sage" } }, w.id, "waiting-approval");
+    shell.render();
+  });
+  await page.screenshot({ path: `${dir}/07-familiar-peek-left.png` });
+});

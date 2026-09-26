@@ -39,7 +39,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .controls button { width: 12px; height: 12px; padding: 0; border: 1px solid var(--line); background: var(--paper); }
 .controls .close::after { content: ""; display: block; margin: 2px; height: 6px; }
 .title { flex: 1; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--paper); padding: 0 6px; justify-self: center; }
-.owner { font-size: 11px; color: var(--paper); background: var(--agent); padding: 0 6px; border-radius: 2px; }
+.owner { font-size: 11px; color: var(--paper); background: var(--agent); padding: 0 6px; border-radius: 2px; flex: none; display: flex; min-width: 0; white-space: nowrap; }
+.owner .who { flex: none; }
+.owner .what { overflow: hidden; text-overflow: ellipsis; white-space: pre; }
+/* A familiar's window peeking out from behind the focused one shows only the kernel's
+   agentPeek (120px) strip: keep the name whole in that strip, trim the status first,
+   and on a left peek lead with the label so it sits on the visible edge. */
+.win[data-peek] .owner { max-width: calc(120px - 8px); }
+.win[data-peek="left"]:not([data-focused="true"]) .owner { order: -1; }
 .badge { width: 8px; height: 8px; border-radius: 50%; background: var(--agent); }
 .content { flex: 1; min-height: 0; overflow: auto; position: relative; }
 .resize { position: absolute; z-index: 5; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--line) 50% 58%, transparent 58% 70%, var(--line) 70% 78%, transparent 78%); touch-action: none; }
