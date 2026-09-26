@@ -133,6 +133,8 @@ export class WindowManager {
     const focused = this.#focusedId ? this.#windows.get(this.#focusedId) : undefined;
     const behind = ctx.actor.kind === "agent" && focused && focused.state === "normal";
     if (behind) {
+      // Never hidden: an agent window must peek out from behind the focused one.
+      win.rect = this.#peek(win.rect, focused.rect);
       // Never steal focus: slot in directly beneath the focused window and badge it.
       this.#stack.splice(this.#stack.indexOf(focused.id), 0, id);
       win.badge = true;
@@ -218,6 +220,19 @@ export class WindowManager {
     this.#emit(ctx, "window:status", id, { status: status ?? null });
   }
 
+  setTitle(ctx: Ctx, id: string, title: string): void {
+    const win = this.#must(id);
+    win.title = title;
+    this.#emit(ctx, "window:title", id, { title });
+  }
+
+  setDocumentPath(ctx: Ctx, id: string, documentPath: string | undefined): void {
+    const win = this.#must(id);
+    if (documentPath) win.documentPath = documentPath;
+    else delete win.documentPath;
+    this.#emit(ctx, "window:document", id, { documentPath: documentPath ?? null });
+  }
+
   setViewport(viewport: Size): void {
     this.#viewport = { ...viewport };
   }
@@ -246,6 +261,19 @@ export class WindowManager {
     const next = { x: last.rect.x + this.#m.cascade, y: last.rect.y + this.#m.cascade, w, h };
     const fits = next.x >= area.x && next.y >= area.y && next.x + w <= area.x + area.w && next.y + h <= area.y + area.h;
     return fits ? next : centered;
+  }
+
+  /** Shift `r` so at least `minVisibleTitle` px of it shows beside `over`, preferring the right. */
+  #peek(r: Rect, over: Rect): Rect {
+    const covered = r.x >= over.x && r.y >= over.y && r.x + r.w <= over.x + over.w && r.y + r.h <= over.y + over.h;
+    if (!covered || this.isSmall) return r;
+    const area = this.desktopArea;
+    const peek = this.#m.minVisibleTitle;
+    const right = over.x + over.w + peek - r.w;
+    if (right + r.w <= area.x + area.w) return { ...r, x: right };
+    const left = over.x - peek;
+    if (left >= area.x) return { ...r, x: left };
+    return { ...r, y: Math.max(area.y, over.y - this.#m.titleBarHeight - peek) };
   }
 
   #refocus(): void {

@@ -134,3 +134,25 @@ test("close refocuses the next-highest visible window", () => {
   k.wm.close(u, a.id);
   assert.equal(k.wm.focusedId, null);
 });
+
+test("title and document path updates emit events", () => {
+  const { k, events } = setup();
+  const w = openTE(k);
+  k.wm.setTitle(u, w.id, "notes.txt");
+  k.wm.setDocumentPath(u, w.id, "/Documents/notes.txt");
+  assert.equal(k.wm.get(w.id).title, "notes.txt");
+  assert.equal(k.wm.get(w.id).documentPath, "/Documents/notes.txt");
+  assert.ok(events.some((e) => e.type === "window:title"));
+  k.wm.setDocumentPath(u, w.id, undefined);
+  assert.equal(k.wm.get(w.id).documentPath, undefined);
+});
+
+test("WM-09c an agent window opened behind is never fully covered by the focused window", () => {
+  const { k } = setup();
+  const mine = k.wm.open(u, { instanceId: "f", appId: "finder", title: "Documents", defaultSize: FINDER.defaultWindow, minSize: FINDER.minWindow });
+  const theirs = openTE(k, sage);
+  const [m, t] = [mine.rect, theirs.rect];
+  const covered = t.x >= m.x && t.y >= m.y && t.x + t.w <= m.x + m.w && t.y + t.h <= m.y + m.h;
+  assert.equal(covered, false);
+  assert.equal(t.x + t.w - (m.x + m.w), 40);
+});
